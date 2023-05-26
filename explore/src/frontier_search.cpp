@@ -2,6 +2,7 @@
 
 #include <mutex>
 
+#include <tf/tf.h>
 #include <costmap_2d/cost_values.h>
 #include <costmap_2d/costmap_2d.h>
 #include <geometry_msgs/Point.h>
@@ -15,24 +16,38 @@ using costmap_2d::NO_INFORMATION;
 using costmap_2d::FREE_SPACE;
 
 FrontierSearch::FrontierSearch(costmap_2d::Costmap2D* costmap,
+                               double orientation_scale,
                                double potential_scale, double gain_scale,
                                double min_frontier_size)
   : costmap_(costmap)
+  , orientation_scale_(orientation_scale)
   , potential_scale_(potential_scale)
   , gain_scale_(gain_scale)
   , min_frontier_size_(min_frontier_size)
 {
 }
 
-std::vector<Frontier> FrontierSearch::searchFrom(geometry_msgs::Point position)
+std::vector<Frontier> FrontierSearch::searchFrom(geometry_msgs::Pose pose)
 {
   std::vector<Frontier> frontier_list;
 
   // Sanity check that robot is inside costmap bounds before searching
   unsigned int mx, my;
-  if (!costmap_->worldToMap(position.x, position.y, mx, my)) {
+  if (!costmap_->worldToMap(pose.position.x, pose.position.y, mx, my)) {
     ROS_ERROR("Robot out of costmap bounds, cannot search for frontiers");
     return frontier_list;
+  }
+
+  double yaw;
+  {
+    tf::Quaternion q(
+      pose.orientation.x,
+      pose.orientation.y,
+      pose.orientation.z,
+      pose.orientation.w);
+    tf::Matrix3x3 m(q);
+    double roll, pitch;
+    m.getRPY(roll, pitch, yaw);
   }
 
   // make sure map is consistent and locked for duration of search
@@ -85,7 +100,7 @@ std::vector<Frontier> FrontierSearch::searchFrom(geometry_msgs::Point position)
 
   // set costs of frontiers
   for (auto& frontier : frontier_list) {
-    frontier.cost = frontierCost(frontier);
+    frontier.cost = frontierCost(frontier, pose, yaw);
   }
   std::sort(
       frontier_list.begin(), frontier_list.end(),
@@ -188,10 +203,15 @@ bool FrontierSearch::isNewFrontierCell(unsigned int idx,
   return false;
 }
 
-double FrontierSearch::frontierCost(const Frontier& frontier)
+double FrontierSearch::frontierCost(const Frontier& frontier, const geometry_msgs::Pose& pose, double yaw)
 {
-  return (potential_scale_ * frontier.min_distance *
-          costmap_->getResolution()) -
-         (gain_scale_ * frontier.size * costmap_->getResolution());
+  const double proximity_cost = costmap_->getResolution()*(potential_scale_ * frontier.min_distance - gain_scale_ * frontier.size);
+  const double v1_x = cos(yaw);
+  const double v1_y = sin(yaw);
+  const double v2_x = pose.position.x - frontier.centroid.x;
+  const double v2_y = pose.position.y - frontier.centroid.y;
+  const double v2_mag = sqrt(pow(v2_x, 2) + pow(v2_y, 2));
+  const double angle = acos((v1_x * v2_x + v1_y * v2_y)/(v2_mag));
+  return orientation_scale_*(3.1416 - abs(angle)) + proximity_cost;
 }
 }

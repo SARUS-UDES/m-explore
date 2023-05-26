@@ -2,6 +2,7 @@
 #define FRONTIER_SEARCH_H_
 
 #include <costmap_2d/costmap_2d.h>
+#include <geometry_msgs/Pose.h>
 
 namespace frontier_exploration
 {
@@ -34,15 +35,15 @@ public:
    * @brief Constructor for search task
    * @param costmap Reference to costmap data to search.
    */
-  FrontierSearch(costmap_2d::Costmap2D* costmap, double potential_scale,
-                 double gain_scale, double min_frontier_size);
+  FrontierSearch(costmap_2d::Costmap2D* costmap, double orientation_scale,
+                 double potential_scale, double gain_scale, double min_frontier_size);
 
   /**
    * @brief Runs search implementation, outward from the start position
-   * @param position Initial position to search from
+   * @param pose Initial position to search from
    * @return List of frontiers, if any
    */
-  std::vector<Frontier> searchFrom(geometry_msgs::Point position);
+  std::vector<Frontier> searchFrom(geometry_msgs::Pose pose);
 
 protected:
   /**
@@ -75,13 +76,13 @@ protected:
    * @param frontier frontier for which compute the cost
    * @return cost of the frontier
    */
-  double frontierCost(const Frontier& frontier);
+  double frontierCost(const Frontier& frontier, const geometry_msgs::Pose& pose, double yaw);
 
 private:
   costmap_2d::Costmap2D* costmap_;
   unsigned char* map_;
   unsigned int size_x_, size_y_;
-  double potential_scale_, gain_scale_;
+  double orientation_scale_, potential_scale_, gain_scale_;
   double min_frontier_size_;
 };
 }
