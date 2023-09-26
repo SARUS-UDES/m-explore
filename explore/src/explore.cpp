@@ -60,6 +60,7 @@ Explore::Explore()
 {
   double timeout;
   double min_frontier_size;
+  double max_frontier_size;
   private_nh_.param("planner_frequency", planner_frequency_, 1.0);
   private_nh_.param("progress_timeout", timeout, 30.0);
   progress_timeout_ = ros::Duration(timeout);
@@ -68,12 +69,14 @@ Explore::Explore()
   private_nh_.param("orientation_scale", orientation_scale_, 0.0);
   private_nh_.param("gain_scale", gain_scale_, 1.0);
   private_nh_.param("min_frontier_size", min_frontier_size, 0.5);
+  private_nh_.param("max_frontier_size", max_frontier_size, 10.0);
 
   search_ = frontier_exploration::FrontierSearch(costmap_client_.getCostmap(),
                                                  orientation_scale_,
                                                  potential_scale_,
                                                  gain_scale_,
-                                                 min_frontier_size);
+                                                 min_frontier_size,
+                                                 max_frontier_size);
 
   if (visualize_) {
     marker_array_publisher_ =
@@ -107,6 +110,11 @@ void Explore::visualizeFrontiers(
   red.g = 0;
   red.b = 0;
   red.a = 1.0;
+  std_msgs::ColorRGBA yellow;
+  yellow.r = 0.9;
+  yellow.g = 0.9;
+  yellow.b = 0;
+  yellow.a = 1.0;
   std_msgs::ColorRGBA green;
   green.r = 0;
   green.g = 1.0;
@@ -154,14 +162,14 @@ void Explore::visualizeFrontiers(
     ++id;
     m.type = visualization_msgs::Marker::SPHERE;
     m.id = int(id);
-    m.pose.position = frontier.initial;
+    m.pose.position = frontier.centroid;
     // scale frontier according to its cost (costier frontiers will be smaller)
     double scale = std::min(std::abs(min_cost * 0.4 / frontier.cost), 0.5);
     m.scale.x = scale;
     m.scale.y = scale;
     m.scale.z = scale;
     m.points = {};
-    m.color = green;
+    m.color = frontier.cost == min_cost ? green : yellow;
     markers.push_back(m);
     ++id;
   }
@@ -232,10 +240,15 @@ void Explore::makePlan()
     return;
   }
 
+  double frontier_normal = search_.computeNormal(*frontier);
+  tf::Quaternion orientation_quat = tf::createQuaternionFromYaw(frontier_normal);
   // send goal to move_base if we have something new to pursue
   move_base_msgs::MoveBaseGoal goal;
   goal.target_pose.pose.position = target_position;
-  goal.target_pose.pose.orientation.w = 1.;
+  goal.target_pose.pose.orientation.w = orientation_quat.w();
+  goal.target_pose.pose.orientation.x = orientation_quat.x();
+  goal.target_pose.pose.orientation.y = orientation_quat.y();
+  goal.target_pose.pose.orientation.z = orientation_quat.z();
   goal.target_pose.header.frame_id = costmap_client_.getGlobalFrameID();
   goal.target_pose.header.stamp = ros::Time::now();
   move_base_client_.sendGoal(

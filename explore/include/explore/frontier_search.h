@@ -36,7 +36,8 @@ public:
    * @param costmap Reference to costmap data to search.
    */
   FrontierSearch(costmap_2d::Costmap2D* costmap, double orientation_scale,
-                 double potential_scale, double gain_scale, double min_frontier_size);
+                 double potential_scale, double gain_scale, double min_frontier_size,
+                 double max_frontier_size);
 
   /**
    * @brief Runs search implementation, outward from the start position
@@ -44,6 +45,13 @@ public:
    * @return List of frontiers, if any
    */
   std::vector<Frontier> searchFrom(geometry_msgs::Pose pose);
+
+  /**
+   * @brief Computes normal along the frontier pixels oriented towards free space
+   * @param frontier Frontier to compute the normals on
+   * @return Angle in radians of the 2D normal where zero degrees points to the positive X
+   */
+  double computeNormal(const Frontier& frontier);
 
 protected:
   /**
@@ -83,7 +91,7 @@ private:
   unsigned char* map_;
   unsigned int size_x_, size_y_;
   double orientation_scale_, potential_scale_, gain_scale_;
-  double min_frontier_size_;
+  double min_frontier_size_, max_frontier_size_;
 };
 }
 #endif
