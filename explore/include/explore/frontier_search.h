@@ -51,7 +51,7 @@ public:
    * @param frontier Frontier to compute the normals on
    * @return Angle in radians of the 2D normal where zero degrees points to the positive X
    */
-  double computeNormal(const Frontier& frontier);
+  double computeNormal(const std::vector<geometry_msgs::Point>& points);
 
 protected:
   /**

@@ -244,12 +244,14 @@ Frontier FrontierSearch::buildNewFrontier(unsigned int initial_cell,
   return output;
 }
 
-double FrontierSearch::computeNormal(const Frontier& frontier)
+double FrontierSearch::computeNormal(const std::vector<geometry_msgs::Point>& points)
 {
   FrontierNormal frontier_normal;
 
-  for (geometry_msgs::Point pt : frontier.points) {
-    unsigned int idx = costmap_->getIndex(pt.x, pt.y);
+  for (geometry_msgs::Point pt : points) {
+    unsigned int mx, my;
+    costmap_->worldToMap(pt.x, pt.y, mx, my);
+    unsigned int idx = costmap_->getIndex(mx, my);
     // Compute normals
     for (unsigned int nbr: nhood4(idx, *costmap_)) {
       if (map_[nbr] == FREE_SPACE){

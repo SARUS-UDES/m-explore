@@ -240,7 +240,7 @@ void Explore::makePlan()
     return;
   }
 
-  double frontier_normal = search_.computeNormal(*frontier);
+  double frontier_normal = search_.computeNormal(frontier->points);
   tf::Quaternion orientation_quat = tf::createQuaternionFromYaw(frontier_normal);
   // send goal to move_base if we have something new to pursue
   move_base_msgs::MoveBaseGoal goal;
