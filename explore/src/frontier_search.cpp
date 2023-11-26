@@ -288,8 +288,8 @@ double FrontierSearch::frontierCost(const Frontier& frontier, const geometry_msg
 {
   const double v2_x = pose.position.x - frontier.centroid.x;
   const double v2_y = pose.position.y - frontier.centroid.y;
-  const double heading_with_frontier = M_PI - abs(atan2f64(v2_y, v2_x) - yaw);
-  const double proximity_cost = costmap_->getResolution()*(potential_scale_ * frontier.min_distance - gain_scale_ * frontier.size);
+  const double heading_with_frontier = (M_PI - abs(atan2f64(v2_y, v2_x) - yaw)) / M_PI;
+  const double proximity_cost = costmap_->getResolution()*(potential_scale_ * frontier.min_distance - gain_scale_ * frontier.size/max_frontier_size_);
   return orientation_scale_*(heading_with_frontier) + proximity_cost;
 }
 }
